@@ -1,14 +1,46 @@
-/* profile.js - Личный кабинет (Исправленная версия с актуальными данными) */
+/* profile.js - Версия с логированием и авто-тестом */
+
+console.log("🚀 profile.js загружен!");
 
 // =========================
-// 1. ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ (Загружает свежие данные всегда)
+// 1. ТЕСТОВЫЙ ЗАКАЗ (Если хранилище пустое)
+// =========================
+function ensureTestOrderExists() {
+    let orders = JSON.parse(localStorage.getItem('examOrders')) || [];
+    
+    if (orders.length === 0) {
+        console.log("⚠️ В хранилище нет заказов. Создаю тестовый...");
+        orders.push({
+            id: Date.now(),
+            created_at: new Date().toISOString(),
+            full_name: "Тестовый Пользователь",
+            email: "test@mail.ru",
+            phone: "+79991234567",
+            delivery_address: "Москва, ул. Тестовая, д. 1",
+            delivery_date: new Date().toISOString().slice(0, 10),
+            delivery_interval: "18:00-22:00",
+            comment: "Это тестовый заказ",
+            good_ids: [1, 2, 5],
+            _total: 500
+        });
+        localStorage.setItem('examOrders', JSON.stringify(orders));
+        console.log("✅ Тестовый заказ создан!");
+    } else {
+        console.log(`📦 Найдено заказов: ${orders.length}`);
+    }
+}
+
+// =========================
+// 2. ФУНКЦИЯ ПОЛУЧЕНИЯ ЗАКАЗОВ
 // =========================
 function getOrdersFromStorage() {
     const stored = localStorage.getItem('examOrders');
+    console.log("📥 Чтение localStorage:", stored);
     if (stored) {
         try {
             return JSON.parse(stored);
         } catch (e) {
+            console.error("❌ Ошибка парсинга JSON:", e);
             return [];
         }
     }
@@ -16,24 +48,19 @@ function getOrdersFromStorage() {
 }
 
 // =========================
-// 2. ОТРИСОВКА ТАБЛИЦЫ
+// 3. ОТРИСОВКА ТАБЛИЦЫ
 // =========================
 function renderOrders() {
     const tbody = document.getElementById('orders-list');
     if (!tbody) {
-        console.error("Ошибка: Не найден элемент tbody с id='orders-list'");
+        console.error("❌ Не найден tbody с id='orders-list'");
         return;
     }
 
-    if (typeof allGoods === 'undefined') {
-        tbody.innerHTML = '<tr><td colspan="6" style="color:red; text-align:center;">Ошибка: не загружен файл goods.js</td></tr>';
-        return;
-    }
-
-    // Загружаем заказы
     let orders = getOrdersFromStorage();
     
     if (orders.length === 0) {
+        console.log("ℹ️ Заказов нет, вывожу заглушку.");
         tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:30px;">У вас пока нет оформленных заказов.</td></tr>';
         return;
     }
@@ -42,85 +69,61 @@ function renderOrders() {
 
     let html = '';
     orders.forEach((order, index) => {
-        const names = order.good_ids.map(id => {
-            const g = allGoods.find(g => g.id === id);
-            return g ? g.name : 'Товар удалён из каталога';
-        });
-        
         const date = new Date(order.created_at);
         const dateStr = `${date.getDate().toString().padStart(2,'0')}.${(date.getMonth()+1).toString().padStart(2,'0')}.${date.getFullYear()} ${date.getHours().toString().padStart(2,'0')}:${date.getMinutes().toString().padStart(2,'0')}`;
 
-        let totalPrice = order._total;
-        if (!totalPrice || totalPrice === 0) {
-            totalPrice = 200;
-            order.good_ids.forEach(id => {
-                const g = allGoods.find(g => g.id === id);
-                if (g) totalPrice += (g.discount_price || g.actual_price);
-            });
-        }
-
         html += `
-            <tr>
+            <tr id="row-${order.id}">
                 <td>${index + 1}</td>
                 <td>${dateStr}</td>
-                <td>${names.join(', ')}</td>
-                <td>${totalPrice}₽</td>
+                <td>${order.good_ids.join(', ')}</td>
+                <td>${order._total || 0}₽</td>
                 <td>${order.delivery_date || '—'}<br>${order.delivery_interval || '—'}</td>
                 <td>
-                    <button class="action-btn view-btn" data-id="${order.id}" onclick="openView(${order.id})">👁️</button>
-                    <button class="action-btn edit-btn" data-id="${order.id}" onclick="openEdit(${order.id})">✏️</button>
-                    <button class="action-btn delete-btn" data-id="${order.id}" onclick="openDelete(${order.id})">🗑️</button>
+                    <button class="action-btn view-btn" onclick="openView(${order.id})">👁️</button>
+                    <button class="action-btn edit-btn" onclick="openEdit(${order.id})">✏️</button>
+                    <button class="action-btn delete-btn" onclick="openDelete(${order.id})">🗑️</button>
                 </td>
             </tr>
         `;
     });
     tbody.innerHTML = html;
+    console.log("🖥️ Таблица отрисована!");
 }
 
 // =========================
-// 3. МОДАЛЬНОЕ ОКНО: ПРОСМОТР (Всегда берет свежие данные из storage)
+// 4. ПРОСМОТР
 // =========================
 function openView(id) {
-    // ВАЖНО: Загружаем данные прямо сейчас, чтобы они были точными
-    const orders = getOrdersFromStorage(); 
+    console.log(`👁️ Просмотр заказа #${id}`);
+    const orders = getOrdersFromStorage();
     const order = orders.find(o => o.id === id);
-    if (!order) return;
-
-    const names = order.good_ids.map(id => {
-        const g = allGoods.find(g => g.id === id);
-        return g ? g.name : 'Удалено';
-    });
+    if (!order) {
+        console.error("❌ Заказ не найден!");
+        return;
+    }
 
     const date = new Date(order.created_at);
     const dateStr = `${date.getDate().toString().padStart(2,'0')}.${(date.getMonth()+1).toString().padStart(2,'0')}.${date.getFullYear()} ${date.getHours().toString().padStart(2,'0')}:${date.getMinutes().toString().padStart(2,'0')}`;
-
-    let totalPrice = order._total;
-    if (!totalPrice || totalPrice === 0) {
-        totalPrice = 200;
-        order.good_ids.forEach(id => {
-            const g = allGoods.find(g => g.id === id);
-            if (g) totalPrice += (g.discount_price || g.actual_price);
-        });
-    }
 
     document.getElementById('view-content').innerHTML = `
         <p><strong>Имя:</strong> ${order.full_name}</p>
         <p><strong>Email:</strong> ${order.email}</p>
         <p><strong>Телефон:</strong> ${order.phone}</p>
         <p><strong>Адрес:</strong> ${order.delivery_address}</p>
-        <p><strong>Дата доставки:</strong> ${order.delivery_date}</p>
-        <p><strong>Время:</strong> ${order.delivery_interval}</p>
+        <p><strong>Дата:</strong> ${order.delivery_date} ${order.delivery_interval}</p>
         <p><strong>Комментарий:</strong> ${order.comment}</p>
-        <p><strong>Состав:</strong> ${names.join(', ')}</p>
-        <p><strong>Стоимость:</strong> ${totalPrice}₽</p>
+        <p><strong>Состав ID:</strong> ${order.good_ids.join(', ')}</p>
+        <p><strong>Стоимость:</strong> ${order._total}₽</p>
     `;
     document.getElementById('modal-view').style.display = 'flex';
 }
 
 // =========================
-// 4. МОДАЛЬНОЕ ОКНО: РЕДАКТИРОВАНИЕ
+// 5. РЕДАКТИРОВАНИЕ
 // =========================
 function openEdit(id) {
+    console.log(`✏️ Редактирование заказа #${id}`);
     const orders = getOrdersFromStorage();
     const order = orders.find(o => o.id === id);
     if (!order) return;
@@ -138,8 +141,8 @@ function openEdit(id) {
 }
 
 document.getElementById('save-edit-btn').addEventListener('click', function() {
-    const id = document.getElementById('edit-id').value;
-    // ВАЖНО: Загружаем свежие данные перед изменением
+    const id = Number(document.getElementById('edit-id').value);
+    console.log(`💾 Сохранение изменений для #${id}`);
     let orders = getOrdersFromStorage();
     const index = orders.findIndex(o => o.id === id);
     
@@ -151,52 +154,47 @@ document.getElementById('save-edit-btn').addEventListener('click', function() {
         orders[index].delivery_date = document.getElementById('edit-delivery_date').value;
         orders[index].delivery_interval = document.getElementById('edit-delivery_interval').value;
         orders[index].comment = document.getElementById('edit-comment').value;
-        
-        // Сразу пересчитываем цену после редактирования (мало ли)
-        let newTotal = 200;
-        orders[index].good_ids.forEach(id => {
-            const g = allGoods.find(g => g.id === id);
-            if (g) newTotal += (g.discount_price || g.actual_price);
-        });
-        orders[index]._total = newTotal;
-
         localStorage.setItem('examOrders', JSON.stringify(orders));
+        console.log("✅ Данные сохранены:", orders[index]);
+    } else {
+        console.error("❌ Заказ не найден при сохранении!");
     }
     
     showNotification(`✅ Заказ #${id} успешно изменён!`, 'success');
     document.getElementById('modal-edit').style.display = 'none';
-    renderOrders(); // Перерисовываем таблицу
+    renderOrders();
 });
 
 // =========================
-// 5. МОДАЛЬНОЕ ОКНО: УДАЛЕНИЕ
+// 6. УДАЛЕНИЕ
 // =========================
 function openDelete(id) {
+    console.log(`🗑️ Попытка удаления заказа #${id}`);
     document.getElementById('delete-id').value = id;
     document.getElementById('modal-delete').style.display = 'flex';
 }
 
 document.getElementById('confirm-delete-btn').addEventListener('click', function() {
-    const id = document.getElementById('delete-id').value;
-    
-    // ВАЖНО: Загружаем свежие данные перед удалением
+    const id = Number(document.getElementById('delete-id').value);
+    console.log(`🚮 Подтверждение удаления #${id}`);
     let orders = getOrdersFromStorage();
-    const initialLength = orders.length;
+    const beforeCount = orders.length;
     orders = orders.filter(o => o.id !== id);
     
-    if (orders.length !== initialLength) {
+    if (orders.length !== beforeCount) {
         localStorage.setItem('examOrders', JSON.stringify(orders));
+        console.log(`✅ Заказ #${id} удален! Осталось: ${orders.length}`);
         showNotification(`🗑️ Заказ #${id} успешно удалён!`, 'info');
         document.getElementById('modal-delete').style.display = 'none';
-        renderOrders(); // Перерисовываем таблицу
+        renderOrders();
     } else {
+        console.error("❌ Заказ не найден для удаления!");
         showNotification(`❌ Ошибка: Заказ #${id} не найден.`, 'error');
-        document.getElementById('modal-delete').style.display = 'none';
     }
 });
 
 // =========================
-// 6. УПРАВЛЕНИЕ МОДАЛЬНЫМИ ОКНАМИ
+// 7. МОДАЛЬНЫЕ ОКНА
 // =========================
 document.querySelectorAll('.modal-close').forEach(el => {
     el.addEventListener('click', function() {
@@ -210,7 +208,7 @@ window.addEventListener('click', function(e) {
 });
 
 // =========================
-// 7. УВЕДОМЛЕНИЯ
+// 8. УВЕДОМЛЕНИЯ
 // =========================
 function showNotification(message, type = 'info') {
     const area = document.getElementById('notification-area');
@@ -227,9 +225,10 @@ function showNotification(message, type = 'info') {
 }
 
 // =========================
-// 8. ЗАПУСК
+// 9. ЗАПУСК
 // =========================
 document.addEventListener('DOMContentLoaded', function() {
-    console.log("Запуск profile.js...");
+    console.log("🟢 Страница ЛК загружена.");
+    ensureTestOrderExists();
     renderOrders();
 });
