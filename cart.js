@@ -38,7 +38,7 @@ function renderCart() {
     });
     container.innerHTML = html;
     
-    updateTotal();
+    updateTotal(); // Важно! Сразу пересчитываем цену
 }
 
 // =========================
@@ -63,17 +63,16 @@ function updateTotal() {
 
     let deliveryCost = 200; // Базовая
 
-    // Расчет доставки (по заданию)
     const dateInput = document.getElementById('delivery_date');
     if (dateInput.value) {
         const date = new Date(dateInput.value);
-        const day = date.getDay(); // 0 - Вс, 6 - Сб
+        const day = date.getDay();
         const hour = new Date().getHours();
 
         if (day === 6 || day === 0) {
-            deliveryCost += 300; // Выходные
+            deliveryCost += 300;
         } else if (hour >= 18) {
-            deliveryCost += 200; // Вечер буднего дня
+            deliveryCost += 200;
         }
     }
 
@@ -88,6 +87,11 @@ document.getElementById('delivery_date').addEventListener('change', updateTotal)
 document.getElementById('order-form').addEventListener('submit', function(e) {
     e.preventDefault();
 
+    if (cart.length === 0) {
+        showNotification('❌ Корзина пуста. Добавьте товары!', 'error');
+        return;
+    }
+
     // Собираем данные
     const orderData = {
         full_name: document.getElementById('full_name').value,
@@ -101,25 +105,31 @@ document.getElementById('order-form').addEventListener('submit', function(e) {
         good_ids: cart
     };
 
-    // Эмуляция отправки (вместо fetch)
     console.log("Эмуляция отправки заказа:", orderData);
     
-    // Успешный ответ
+    // Сохраняем заказ в localStorage, чтобы profile.js мог его прочитать
+    let orders = JSON.parse(localStorage.getItem('examOrders')) || [];
+    orders.push({
+        ...orderData,
+        id: Date.now(),
+        created_at: new Date().toISOString(),
+        _total: parseInt(document.getElementById('total-cost').textContent)
+    });
+    localStorage.setItem('examOrders', JSON.stringify(orders));
+
     showNotification('✅ Заказ успешно оформлен!', 'success');
     
-    // Очищаем корзину
     cart = [];
     localStorage.removeItem('examCart');
     renderCart();
     
-    // Перенаправление на главную через 2 секунды
     setTimeout(() => {
         window.location.href = 'index.html';
     }, 2000);
 });
 
 // =========================
-// 5. УВЕДОМЛЕНИЯ (Дублируем из script.js)
+// 5. УВЕДОМЛЕНИЯ
 // =========================
 function showNotification(message, type = 'info') {
     const area = document.getElementById('notification-area');
