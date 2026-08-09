@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Интернет-магазин - Главная</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <div class="header-container">
+            <h1 class="logo">MyShop</h1>
+            <div class="search-area">
+                <input type="text" id="search-input" placeholder="Поиск товаров...">
+                <button id="search-btn">Найти</button>
+                <!-- Блок автодополнения (Вариант 1) -->
+                <div id="autocomplete-list" class="autocomplete-items"></div>
+            </div>
+            <nav class="header-nav">
+                <a href="cart.html">🛒 Корзина</a>
+                <a href="profile.html">👤 ЛК</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main-container">
+        <aside class="sidebar">
+            <h3>Фильтры</h3>
+            <div class="filter-group">
+                <label>Категория:</label>
+                <div id="categories-container">
+                    <!-- Чекбоксы категорий (будут созданы через JS) -->
+                </div>
+            </div>
+            <div class="filter-group">
+                <label>Стоимость (руб.):</label>
+                <input type="number" id="price-from" placeholder="От">
+                <input type="number" id="price-to" placeholder="До">
+            </div>
+            <div class="filter-group">
+                <label><input type="checkbox" id="discount-only"> Только со скидкой</label>
+            </div>
+            <button id="apply-filters-btn">Применить</button>
+        </aside>
+
+        <section class="catalog-section">
+            <div class="catalog-header">
+                <h2>Каталог</h2>
+                <select id="sort-select">
+                    <option value="rating_desc">По рейтингу (высокий → низкий)</option>
+                    <option value="rating_asc">По рейтингу (низкий → высокий)</option>
+                    <option value="price_asc">По цене (дешевле → дороже)</option>
+                    <option value="price_desc">По цене (дороже → дешевле)</option>
+                </select>
+            </div>
+
+            <div id="notification-area"></div>
+
+            <div class="goods-grid" id="goods-grid">
+                <!-- Сюда JS загрузит карточки товаров -->
+                <p>Загрузка товаров...</p>
+            </div>
+            
+            <div class="pagination-container" id="pagination-container">
+                <button id="load-more-btn" style="display: none;">Загрузить ещё</button>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="footer-container">
+            <p>&copy; 2025 MyShop. Все права защищены.</p>
+            <p>Контакты: example@myshop.ru</p>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
