@@ -1,46 +1,37 @@
-/* script.js - Главная страница */
+/* script.js - Главная страница с поиском и фильтрацией */
 
 let cart = JSON.parse(localStorage.getItem('examCart')) || [];
-let currentPage = 1;
-const perPage = 10;
-let allLoaded = false;
 let currentFilteredGoods = [...allGoods];
 
 // =========================
 // 1. ЗАГРУЗКА И ОТРИСОВКА ТОВАРОВ
 // =========================
 function loadGoods(reset = false) {
-    if (allLoaded && !reset) return;
+    const grid = document.getElementById('goods-grid');
+    if (!grid) return;
+
+    // Получаем отфильтрованные данные
+    currentFilteredGoods = getFilteredAndSearchedGoods();
 
     if (reset) {
-        document.getElementById('goods-grid').innerHTML = '';
-        currentPage = 1;
-        allLoaded = false;
-        currentFilteredGoods = filterGoods([...allGoods]);
+        grid.innerHTML = '';
     }
 
-    const start = (currentPage - 1) * perPage;
-    const end = start + perPage;
-    const pageGoods = currentFilteredGoods.slice(start, end);
-
-    if (pageGoods.length === 0) {
-        allLoaded = true;
+    if (currentFilteredGoods.length === 0) {
+        grid.innerHTML = '<p style="text-align:center; padding:40px; color:#888;">Нет товаров, соответствующих вашему запросу.</p>';
         document.getElementById('load-more-btn').style.display = 'none';
-        if (reset && currentFilteredGoods.length === 0) {
-            document.getElementById('goods-grid').innerHTML = '<p>Нет товаров, соответствующих вашему запросу.</p>';
-        }
         return;
     }
 
-    renderGoods(pageGoods);
-    currentPage++;
-    allLoaded = (end >= currentFilteredGoods.length);
-
-    document.getElementById('load-more-btn').style.display = allLoaded ? 'none' : 'block';
+    // Отрисовываем все найденные товары (без пагинации для простоты)
+    renderGoods(currentFilteredGoods);
+    document.getElementById('load-more-btn').style.display = 'none';
 }
 
 function renderGoods(goods) {
     const grid = document.getElementById('goods-grid');
+    grid.innerHTML = '';
+    
     goods.forEach(g => {
         const price = g.discount_price || g.actual_price;
         const oldPriceHtml = g.discount_price ? `<span class="old-price">${g.actual_price}₽</span>` : '';
@@ -52,7 +43,7 @@ function renderGoods(goods) {
         card.className = 'goods-card';
         card.innerHTML = `
             <img src="${g.image_url}" alt="${g.name}">
-            <h4 title="${g.name}">${g.name.length > 30 ? g.name.slice(0, 30) + '...' : g.name}</h4>
+            <h4 title="${g.name}">${g.name.length > 40 ? g.name.slice(0, 40) + '...' : g.name}</h4>
             <div>⭐ ${g.rating}</div>
             <div class="price">${price}₽ ${oldPriceHtml}</div>
             <button onclick="addToCart(${g.id})" ${btnDisabled}>${btnText}</button>
@@ -62,19 +53,37 @@ function renderGoods(goods) {
 }
 
 // =========================
-// 2. ФИЛЬТРАЦИЯ (Эмуляция)
+// 2. ФИЛЬТРАЦИЯ И ПОИСК (ГЛАВНАЯ ЛОГИКА)
 // =========================
-function filterGoods(goods) {
+
+// Функция, которая применяет ВСЕ фильтры и поиск
+function getFilteredAndSearchedGoods() {
+    let filtered = [...allGoods];
+
+    // 1. Поиск по названию
+    const searchQuery = document.getElementById('search-input').value.toLowerCase().trim();
+    if (searchQuery) {
+        filtered = filtered.filter(g => g.name.toLowerCase().includes(searchQuery));
+    }
+
+    // 2. Фильтр по цене
     const priceFrom = document.getElementById('price-from').value;
     const priceTo = document.getElementById('price-to').value;
-    const discountOnly = document.getElementById('discount-only').checked;
-    
-    let filtered = [...goods];
     if (priceFrom) filtered = filtered.filter(g => (g.discount_price || g.actual_price) >= Number(priceFrom));
     if (priceTo) filtered = filtered.filter(g => (g.discount_price || g.actual_price) <= Number(priceTo));
+
+    // 3. Фильтр по скидке
+    const discountOnly = document.getElementById('discount-only').checked;
     if (discountOnly) filtered = filtered.filter(g => g.discount_price !== null);
-    
-    // Сортировка
+
+    // 4. Фильтр по категориям
+    const selectedCategories = document.querySelectorAll('#categories-container input:checked');
+    if (selectedCategories.length > 0) {
+        const checkedValues = Array.from(selectedCategories).map(cb => cb.value);
+        filtered = filtered.filter(g => checkedValues.includes(g.main_category));
+    }
+
+    // 5. Сортировка
     const sort = document.getElementById('sort-select').value;
     if (sort === 'rating_desc') filtered.sort((a,b) => b.rating - a.rating);
     else if (sort === 'rating_asc') filtered.sort((a,b) => a.rating - b.rating);
@@ -84,13 +93,24 @@ function filterGoods(goods) {
     return filtered;
 }
 
-document.getElementById('apply-filters-btn').addEventListener('click', function() {
-    loadGoods(true);
-});
+// Создание чекбоксов категорий (вызывается при загрузке)
+function renderCategoryCheckboxes() {
+    const container = document.getElementById('categories-container');
+    if (!container) return;
 
-document.getElementById('sort-select').addEventListener('change', function() {
-    loadGoods(true);
-});
+    // Собираем уникальные категории
+    const categories = [...new Set(allGoods.map(g => g.main_category))];
+    
+    let html = '';
+    categories.forEach(cat => {
+        html += `
+            <label style="display:block; margin-bottom:5px;">
+                <input type="checkbox" value="${cat}"> ${cat}
+            </label>
+        `;
+    });
+    container.innerHTML = html;
+}
 
 // =========================
 // 3. КОРЗИНА (localStorage)
@@ -101,7 +121,7 @@ function addToCart(goodId) {
         localStorage.setItem('examCart', JSON.stringify(cart));
         showNotification('✅ Товар добавлен в корзину!', 'success');
         updateCartCount();
-        loadGoods(true); // Перерисовываем, чтобы кнопка изменилась
+        loadGoods(); // Перерисовываем, чтобы обновить кнопки
     } else {
         showNotification('ℹ️ Товар уже в корзине', 'info');
     }
@@ -132,10 +152,32 @@ function showNotification(message, type = 'info') {
 }
 
 // =========================
-// 5. ИНИЦИАЛИЗАЦИЯ
+// 5. ИНИЦИАЛИЗАЦИЯ И СОБЫТИЯ
 // =========================
 document.addEventListener('DOMContentLoaded', () => {
+    renderCategoryCheckboxes(); // Создаем чекбоксы
     updateCartCount();
-    loadGoods(true);
-    document.getElementById('load-more-btn').addEventListener('click', () => loadGoods(false));
+    loadGoods();
+
+    // Кнопка "Применить" (Фильтры)
+    document.getElementById('apply-filters-btn').addEventListener('click', () => {
+        loadGoods();
+    });
+
+    // Кнопка "Найти" (Поиск)
+    document.getElementById('search-btn').addEventListener('click', () => {
+        loadGoods();
+    });
+
+    // Сортировка
+    document.getElementById('sort-select').addEventListener('change', () => {
+        loadGoods();
+    });
+
+    // Поиск по нажатию Enter (в поле ввода)
+    document.getElementById('search-input').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            loadGoods();
+        }
+    });
 });
