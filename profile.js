@@ -1,54 +1,19 @@
 /* profile.js - Личный кабинет */
 
 // =========================
-// 1. ГЕНЕРАЦИЯ ДЕМО-ЗАКАЗОВ
-// =========================
-function generateDemoOrders() {
-    const orders = [];
-    const names = ['Иванов Иван Иванович', 'Петрова Анна Сергеевна', 'Сидоров Петр Петрович'];
-    const addresses = ['Москва, ул. Большая Семёновская, 38', 'Москва, ул. Тверская, д. 12', 'Москва, ул. Арбат, д. 22'];
-    const intervals = ['08:00-12:00', '12:00-14:00', '14:00-18:00', '18:00-22:00'];
-
-    for (let i = 1; i <= 5; i++) {
-        const date = new Date();
-        date.setDate(date.getDate() - i);
-        const goodsCount = Math.floor(Math.random() * 4) + 1;
-        const shuffledGoods = [...allGoods].sort(() => 0.5 - Math.random()).slice(0, goodsCount);
-        const goodIds = shuffledGoods.map(g => g.id);
-        let total = 0;
-        shuffledGoods.forEach(g => total += (g.discount_price || g.actual_price));
-
-        const deliveryDate = new Date(date);
-        deliveryDate.setDate(deliveryDate.getDate() + 3);
-
-        orders.push({
-            id: 100 + i,
-            created_at: date.toISOString(),
-            full_name: names[i % names.length],
-            email: `user${i}@mail.ru`,
-            phone: `+7999123456${i}`,
-            delivery_address: addresses[i % addresses.length],
-            delivery_date: deliveryDate.toISOString().slice(0, 10),
-            delivery_interval: intervals[i % intervals.length],
-            comment: `Комментарий к заказу #${100 + i}`,
-            good_ids: goodIds,
-            _total: total
-        });
-    }
-    return orders.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-}
-
-// =========================
-// 2. ОТРИСОВКА ТАБЛИЦЫ
+// 1. ОТРИСОВКА ТАБЛИЦЫ
 // =========================
 function renderOrders() {
-    const orders = generateDemoOrders();
+    const orders = JSON.parse(localStorage.getItem('examOrders')) || [];
     const tbody = document.getElementById('orders-list');
     
     if (orders.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6">У вас пока нет заказов.</td></tr>';
         return;
     }
+
+    // Сортируем новые сверху
+    orders.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
     let html = '';
     orders.forEach((order, index) => {
@@ -79,10 +44,10 @@ function renderOrders() {
 }
 
 // =========================
-// 3. МОДАЛЬНОЕ ОКНО: ПРОСМОТР
+// 2. МОДАЛЬНОЕ ОКНО: ПРОСМОТР
 // =========================
 function openView(id) {
-    const orders = generateDemoOrders();
+    const orders = JSON.parse(localStorage.getItem('examOrders')) || [];
     const order = orders.find(o => o.id === id);
     if (!order) return;
 
@@ -108,10 +73,10 @@ function openView(id) {
 }
 
 // =========================
-// 4. МОДАЛЬНОЕ ОКНО: РЕДАКТИРОВАНИЕ
+// 3. МОДАЛЬНОЕ ОКНО: РЕДАКТИРОВАНИЕ
 // =========================
 function openEdit(id) {
-    const orders = generateDemoOrders();
+    const orders = JSON.parse(localStorage.getItem('examOrders')) || [];
     const order = orders.find(o => o.id === id);
     if (!order) return;
 
@@ -129,13 +94,26 @@ function openEdit(id) {
 
 document.getElementById('save-edit-btn').addEventListener('click', function() {
     const id = document.getElementById('edit-id').value;
+    const orders = JSON.parse(localStorage.getItem('examOrders')) || [];
+    const index = orders.findIndex(o => o.id === id);
+    if (index !== -1) {
+        orders[index].full_name = document.getElementById('edit-full_name').value;
+        orders[index].email = document.getElementById('edit-email').value;
+        orders[index].phone = document.getElementById('edit-phone').value;
+        orders[index].delivery_address = document.getElementById('edit-delivery_address').value;
+        orders[index].delivery_date = document.getElementById('edit-delivery_date').value;
+        orders[index].delivery_interval = document.getElementById('edit-delivery_interval').value;
+        orders[index].comment = document.getElementById('edit-comment').value;
+        localStorage.setItem('examOrders', JSON.stringify(orders));
+    }
+    
     showNotification(`✅ Заказ #${id} успешно изменён (эмуляция)!`, 'success');
     document.getElementById('modal-edit').style.display = 'none';
     renderOrders();
 });
 
 // =========================
-// 5. МОДАЛЬНОЕ ОКНО: УДАЛЕНИЕ
+// 4. МОДАЛЬНОЕ ОКНО: УДАЛЕНИЕ
 // =========================
 function openDelete(id) {
     document.getElementById('delete-id').value = id;
@@ -144,13 +122,17 @@ function openDelete(id) {
 
 document.getElementById('confirm-delete-btn').addEventListener('click', function() {
     const id = document.getElementById('delete-id').value;
+    let orders = JSON.parse(localStorage.getItem('examOrders')) || [];
+    orders = orders.filter(o => o.id !== id);
+    localStorage.setItem('examOrders', JSON.stringify(orders));
+    
     showNotification(`🗑️ Заказ #${id} успешно удалён (эмуляция)!`, 'info');
     document.getElementById('modal-delete').style.display = 'none';
     renderOrders();
 });
 
 // =========================
-// 6. УПРАВЛЕНИЕ МОДАЛЬНЫМИ ОКНАМИ
+// 5. УПРАВЛЕНИЕ МОДАЛЬНЫМИ ОКНАМИ
 // =========================
 document.querySelectorAll('.modal-close').forEach(el => {
     el.addEventListener('click', function() {
@@ -164,7 +146,7 @@ window.addEventListener('click', function(e) {
 });
 
 // =========================
-// 7. УВЕДОМЛЕНИЯ
+// 6. УВЕДОМЛЕНИЯ
 // =========================
 function showNotification(message, type = 'info') {
     const area = document.getElementById('notification-area');
@@ -180,5 +162,4 @@ function showNotification(message, type = 'info') {
     }, 5000);
 }
 
-// =========================
-// 8. ЗАП
+document.addEventListener('DOMContentLoaded', renderOrders);
